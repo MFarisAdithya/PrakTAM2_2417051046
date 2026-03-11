@@ -5,11 +5,36 @@ import com.example.praktam2_2417051046.R
 object LatihanData {
 
     val daftarLatihan = listOf(
-        Fitness("Push Up", "Melatih otot dada & tangan", "15x Repetisi", R.drawable.pushup),
-        Fitness("Pull Up", "Melatih otot punggung", "10x Repetisi", R.drawable.pullup),
-        Fitness("Sit Up", "Melatih otot perut", "20x Repetisi", R.drawable.situp),
-        Fitness("Plank", "Melatih otot core", "30 Detik", R.drawable.plank),
-        Fitness("Squat", "Melatih kekuatan kaki", "20x Repetisi", R.drawable.squat)
+        Fitness(
+            nama = "Perut",
+            deskripsi = "Latihan fokus pada otot perut",
+            durasi = "15 Menit",
+            imageRes = R.drawable.perut
+        ),
+        Fitness(
+            nama = "Dada",
+            deskripsi = "Latihan untuk memperkuat otot dada",
+            durasi = "12 Menit",
+            imageRes = R.drawable.pushup
+        ),
+        Fitness(
+            nama = "Lengan",
+            deskripsi = "Latihan untuk memperkuat otot lengan",
+            durasi = "10 Menit",
+            imageRes = R.drawable.pullup
+        ),
+        Fitness(
+            nama = "Bahu & Punggung",
+            deskripsi = "Latihan untuk bahu dan punggung",
+            durasi = "15 Menit",
+            imageRes = R.drawable.plank
+        ),
+        Fitness(
+            nama = "Kaki",
+            deskripsi = "Latihan untuk memperkuat otot kaki",
+            durasi = "15 Menit",
+            imageRes = R.drawable.squat
+        )
     )
 
 }

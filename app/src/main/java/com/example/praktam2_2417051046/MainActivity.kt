@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.example.praktam2_2417051046.ui.theme.PrakTAM2_2417051046Theme
 import model.Fitness
 import model.LatihanData
+import androidx.compose.ui.Alignment
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,7 +76,8 @@ fun FitnessCard(latihan: Fitness) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
 
             Column(
