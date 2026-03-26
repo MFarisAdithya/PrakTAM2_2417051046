@@ -4,37 +4,24 @@ import com.example.praktam2_2417051046.R
 
 object LatihanData {
 
+    val kategoriLatihan = listOf(
+        Fitness("Perut", "Latihan fokus pada otot perut", "15 Menit", R.drawable.perut),
+        Fitness("Dada", "Latihan otot dada", "12 Menit", R.drawable.pushup),
+        Fitness("Lengan", "Latihan otot lengan", "10 Menit", R.drawable.pullup),
+        Fitness("Bahu & Punggung", "Latihan punggung", "15 Menit", R.drawable.plank),
+        Fitness("Kaki", "Latihan kaki", "15 Menit", R.drawable.squat)
+    )
+
     val daftarLatihan = listOf(
-        Fitness(
-            nama = "Perut",
-            deskripsi = "Latihan fokus pada otot perut",
-            durasi = "15 Menit",
-            imageRes = R.drawable.perut
-        ),
-        Fitness(
-            nama = "Dada",
-            deskripsi = "Latihan untuk memperkuat otot dada",
-            durasi = "12 Menit",
-            imageRes = R.drawable.pushup
-        ),
-        Fitness(
-            nama = "Lengan",
-            deskripsi = "Latihan untuk memperkuat otot lengan",
-            durasi = "10 Menit",
-            imageRes = R.drawable.pullup
-        ),
-        Fitness(
-            nama = "Bahu & Punggung",
-            deskripsi = "Latihan untuk bahu dan punggung",
-            durasi = "15 Menit",
-            imageRes = R.drawable.plank
-        ),
-        Fitness(
-            nama = "Kaki",
-            deskripsi = "Latihan untuk memperkuat otot kaki",
-            durasi = "15 Menit",
-            imageRes = R.drawable.squat
-        )
+        Fitness("Sit Up", "Melatih otot perut", "15x", R.drawable.situp),
+        Fitness("Plank", "Melatih core", "30 detik", R.drawable.plank),
+        Fitness("Crunch", "Latihan perut atas", "12x", R.drawable.perut),
+
+        Fitness("Push Up", "Melatih dada", "15x", R.drawable.pushup),
+        Fitness("Pull Up", "Melatih punggung", "10x", R.drawable.pullup),
+
+        Fitness("Squat", "Melatih kaki", "20x", R.drawable.squat),
+        Fitness("Lunges", "Melatih kaki & keseimbangan", "12x", R.drawable.squat)
     )
 
 }

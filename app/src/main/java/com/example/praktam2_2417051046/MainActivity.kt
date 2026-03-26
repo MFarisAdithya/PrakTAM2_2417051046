@@ -4,12 +4,38 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -17,12 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.example.praktam2_2417051046.ui.theme.PrakTAM2_2417051046Theme
 import model.Fitness
 import model.LatihanData
-import androidx.compose.ui.Alignment
-import androidx.compose.runtime.*
-import androidx.compose.ui.graphics.Color
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,26 +67,56 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun HomeWorkoutApp(modifier: Modifier = Modifier) {
 
+    val kategori = LatihanData.kategoriLatihan
     val listLatihan = LatihanData.daftarLatihan
 
-    Column(
+    LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
 
-        Text(
-            text = "BurnIt 🔥",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
+        // 🔥 HEADER
+        item {
+            Text(
+                text = "BurnIt 🔥",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // 🔥 LAZY ROW (KATEGORI)
+        item {
+            Text(
+                text = "Kategori Latihan",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
 
-        LazyColumn {
-            items(listLatihan) { latihan ->
-                FitnessCard(latihan)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(kategori) { latihan ->
+                    CategoryItem(latihan)
+                }
             }
+        }
+
+        // 🔥 TITLE LIST
+        item {
+            Text(
+                text = "Daftar Latihan",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        // 🔥 LIST UTAMA (LazyColumn)
+        items(listLatihan) { latihan ->
+            FitnessCard(latihan)
         }
     }
 }
@@ -125,6 +176,32 @@ fun FitnessCard(latihan: Fitness) {
             Button(onClick = { }) {
                 Text("Mulai")
             }
+        }
+    }
+}
+
+@Composable
+fun CategoryItem(latihan: Fitness) {
+    Card(
+        modifier = Modifier.width(140.dp),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Image(
+                painter = painterResource(id = latihan.imageRes),
+                contentDescription = latihan.nama,
+                modifier = Modifier.size(80.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = latihan.nama,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
