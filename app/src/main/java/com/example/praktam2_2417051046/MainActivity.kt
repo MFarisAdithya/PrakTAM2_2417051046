@@ -43,6 +43,8 @@ import androidx.compose.ui.unit.dp
 import com.example.praktam2_2417051046.ui.theme.PrakTAM2_2417051046Theme
 import model.Fitness
 import model.LatihanData
+import androidx.compose.foundation.background
+import androidx.compose.material3.ButtonDefaults
 
 
 class MainActivity : ComponentActivity() {
@@ -73,11 +75,11 @@ fun HomeWorkoutApp(modifier: Modifier = Modifier) {
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
 
-        // 🔥 HEADER
         item {
             Text(
                 text = "BurnIt 🔥",
@@ -86,7 +88,7 @@ fun HomeWorkoutApp(modifier: Modifier = Modifier) {
             )
         }
 
-        // 🔥 LAZY ROW (KATEGORI)
+
         item {
             Text(
                 text = "Kategori Latihan",
@@ -105,7 +107,7 @@ fun HomeWorkoutApp(modifier: Modifier = Modifier) {
             }
         }
 
-        // 🔥 TITLE LIST
+
         item {
             Text(
                 text = "Daftar Latihan",
@@ -114,7 +116,6 @@ fun HomeWorkoutApp(modifier: Modifier = Modifier) {
             )
         }
 
-        // 🔥 LIST UTAMA (LazyColumn)
         items(listLatihan) { latihan ->
             FitnessCard(latihan)
         }
@@ -173,8 +174,13 @@ fun FitnessCard(latihan: Fitness) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Button(onClick = { }) {
-                Text("Mulai")
+            Button(
+                onClick = { },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text("Mulai", color = Color.White)
             }
         }
     }
@@ -183,8 +189,9 @@ fun FitnessCard(latihan: Fitness) {
 @Composable
 fun CategoryItem(latihan: Fitness) {
     Card(
-        modifier = Modifier.width(140.dp),
-        elevation = CardDefaults.cardElevation(4.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Column(
             modifier = Modifier.padding(8.dp),
@@ -200,7 +207,7 @@ fun CategoryItem(latihan: Fitness) {
 
             Text(
                 text = latihan.nama,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.titleMedium
             )
         }
     }
