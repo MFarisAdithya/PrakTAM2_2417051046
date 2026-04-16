@@ -1,4 +1,5 @@
 package com.example.praktam2_2417051046
+import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -45,35 +46,49 @@ import model.Fitness
 import model.LatihanData
 import androidx.compose.foundation.background
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.NavHostController
 
 
 class MainActivity : ComponentActivity() {
+    @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
             PrakTAM2_2417051046Theme {
+
+                val navController = rememberNavController()
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize()
-                ) { innerPadding ->
-                    HomeWorkoutApp(
-                        modifier = Modifier.padding(innerPadding)
-
-                    )
+                ) {
+                    AppNavigation(navController)
                 }
+
             }
         }
     }
 }
 
 @Composable
-fun HomeWorkoutApp(modifier: Modifier = Modifier) {
+fun HomeWorkoutApp(navController: NavController) {
 
     val kategori = LatihanData.kategoriLatihan
     val listLatihan = LatihanData.daftarLatihan
 
     LazyColumn(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
@@ -117,13 +132,13 @@ fun HomeWorkoutApp(modifier: Modifier = Modifier) {
         }
 
         items(listLatihan) { latihan ->
-            FitnessCard(latihan)
+            FitnessCard(latihan, navController)
         }
     }
 }
 
 @Composable
-fun FitnessCard(latihan: Fitness) {
+fun FitnessCard(latihan: Fitness, navController: NavController) {
 
     var isFavorite by remember { mutableStateOf(false) }
 
@@ -175,10 +190,9 @@ fun FitnessCard(latihan: Fitness) {
             Spacer(modifier = Modifier.height(8.dp))
 
             Button(
-                onClick = { },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
+                onClick = {
+                    navController.navigate("detail/${latihan.nama}")
+                },
             ) {
                 Text("Mulai", color = Color.White)
             }
@@ -213,10 +227,108 @@ fun CategoryItem(latihan: Fitness) {
     }
 }
 
+@Composable
+fun DetailScreen(latihan: Fitness) {
+
+    var isLoading by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+
+            Image(
+                painter = painterResource(id = latihan.imageRes),
+                contentDescription = latihan.nama,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+            )
+
+            Text(
+                text = latihan.nama,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(text = latihan.deskripsi)
+            Text(text = "Durasi: ${latihan.durasi}")
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        isLoading = true
+                        delay(2000)
+
+                        snackbarHostState.showSnackbar(
+                            "Latihan ${latihan.nama} dimulai!"
+                        )
+
+                        isLoading = false
+                    }
+                },
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Memproses...")
+                } else {
+                    Text("Mulai Latihan")
+                }
+            }
+        }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+    }
+}
+
+@Composable
+fun AppNavigation(navController: NavHostController) {
+
+    NavHost(
+        navController = navController,
+        startDestination = "home"
+    ) {
+
+        composable("home") {
+            HomeWorkoutApp(navController)
+        }
+
+        composable("detail/{nama}") { backStackEntry ->
+            val nama = backStackEntry.arguments?.getString("nama")
+
+            val latihan = LatihanData.daftarLatihan.find {
+                it.nama == nama
+            }
+
+            if (latihan != null) {
+                DetailScreen(latihan)
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun PreviewApp() {
     PrakTAM2_2417051046Theme {
-        HomeWorkoutApp()
+        val navController = rememberNavController()
+        AppNavigation(navController)
     }
 }
