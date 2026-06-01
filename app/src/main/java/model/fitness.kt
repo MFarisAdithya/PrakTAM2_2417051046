@@ -1,10 +1,15 @@
 package model
 
-import androidx.annotation.DrawableRes
+import com.google.gson.annotations.SerializedName
 
 data class Fitness(
     val nama: String,
     val deskripsi: String,
     val durasi: String,
-    @param:DrawableRes val imageRes: Int
+    @SerializedName("image_url") val image_url: String
+)
+
+data class GistResponse(
+    val kategori: List<Fitness>,
+    val latihan: List<Fitness>
 )

@@ -1,10 +1,11 @@
 package com.example.praktam2_2417051046
+
 import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,44 +21,51 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.praktam2_2417051046.ui.theme.PrakTAM2_2417051046Theme
-import model.Fitness
-import model.LatihanData
-import androidx.compose.foundation.background
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.NavHostController
-
+import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
+import com.example.praktam2_2417051046.ui.theme.PrakTAM2_2417051046Theme
+import com.google.gson.Gson
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import model.Fitness
+import model.GistResponse
+import model.LatihanData
+import java.net.URL
 
 class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -67,25 +75,19 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             PrakTAM2_2417051046Theme {
-
                 val navController = rememberNavController()
-
                 Scaffold(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     AppNavigation(navController)
                 }
-
             }
         }
     }
 }
 
 @Composable
-fun HomeWorkoutApp(navController: NavController) {
-
-    val kategori = LatihanData.kategoriLatihan
-    val listLatihan = LatihanData.daftarLatihan
+fun HomeWorkoutApp(navController: NavController, kategori: List<Fitness>, listLatihan: List<Fitness>) {
 
     LazyColumn(
         modifier = Modifier
@@ -94,7 +96,6 @@ fun HomeWorkoutApp(navController: NavController) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-
         item {
             Text(
                 text = "BurnIt 🔥",
@@ -102,7 +103,6 @@ fun HomeWorkoutApp(navController: NavController) {
                 fontWeight = FontWeight.Bold
             )
         }
-
 
         item {
             Text(
@@ -122,7 +122,6 @@ fun HomeWorkoutApp(navController: NavController) {
             }
         }
 
-
         item {
             Text(
                 text = "Daftar Latihan",
@@ -139,7 +138,6 @@ fun HomeWorkoutApp(navController: NavController) {
 
 @Composable
 fun FitnessCard(latihan: Fitness, navController: NavController) {
-
     var isFavorite by remember { mutableStateOf(false) }
 
     Card(
@@ -148,17 +146,17 @@ fun FitnessCard(latihan: Fitness, navController: NavController) {
             .padding(vertical = 8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
-
         Column(modifier = Modifier.padding(16.dp)) {
-
             Box {
-
-                Image(
-                    painter = painterResource(id = latihan.imageRes),
+                AsyncImage(
+                    model = latihan.image_url,
                     contentDescription = latihan.nama,
+                    placeholder = painterResource(android.R.drawable.ic_menu_gallery),
+                    error = painterResource(android.R.drawable.ic_menu_report_image),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp)
+                        .height(180.dp),
+                    contentScale = ContentScale.Crop
                 )
 
                 IconButton(
@@ -211,10 +209,13 @@ fun CategoryItem(latihan: Fitness) {
             modifier = Modifier.padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Image(
-                painter = painterResource(id = latihan.imageRes),
+            AsyncImage(
+                model = latihan.image_url,
                 contentDescription = latihan.nama,
-                modifier = Modifier.size(80.dp)
+                placeholder = painterResource(android.R.drawable.ic_menu_gallery),
+                error = painterResource(android.R.drawable.ic_menu_report_image),
+                modifier = Modifier.size(80.dp),
+                contentScale = ContentScale.Crop
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -229,26 +230,26 @@ fun CategoryItem(latihan: Fitness) {
 
 @Composable
 fun DetailScreen(latihan: Fitness) {
-
     var isLoading by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
     Box(modifier = Modifier.fillMaxSize()) {
-
         Column(
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
-            Image(
-                painter = painterResource(id = latihan.imageRes),
+            AsyncImage(
+                model = latihan.image_url,
                 contentDescription = latihan.nama,
+                placeholder = painterResource(android.R.drawable.ic_menu_gallery),
+                error = painterResource(android.R.drawable.ic_menu_report_image),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
+                    .height(200.dp),
+                contentScale = ContentScale.Crop
             )
 
             Text(
@@ -267,11 +268,9 @@ fun DetailScreen(latihan: Fitness) {
                     coroutineScope.launch {
                         isLoading = true
                         delay(2000)
-
                         snackbarHostState.showSnackbar(
                             "Latihan ${latihan.nama} dimulai!"
                         )
-
                         isLoading = false
                     }
                 },
@@ -300,26 +299,89 @@ fun DetailScreen(latihan: Fitness) {
 
 @Composable
 fun AppNavigation(navController: NavHostController) {
+    var gistData by remember { mutableStateOf<GistResponse?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var isError by remember { mutableStateOf(false) }
+    var retryCount by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(retryCount) {
+        isLoading = true
+        isError = false
+        val response = getLatihanFromApi()
+        if (response != null) {
+            gistData = response
+            isError = false
+        } else {
+            isError = true
+        }
+        isLoading = false
+    }
 
     NavHost(
         navController = navController,
         startDestination = "home"
     ) {
-
         composable("home") {
-            HomeWorkoutApp(navController)
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (isError) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Warning,
+                        contentDescription = "Error",
+                        modifier = Modifier.size(64.dp),
+                        tint = Color.Red
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Gagal Memuat Data",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Pastikan koneksi internet Anda menyala"
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = { retryCount++ }) {
+                        Text("Coba Lagi", color = Color.White)
+                    }
+                }
+            } else {
+                HomeWorkoutApp(
+                    navController = navController,
+                    kategori = gistData?.kategori ?: emptyList(),
+                    listLatihan = gistData?.latihan ?: emptyList()
+                )
+            }
         }
 
         composable("detail/{nama}") { backStackEntry ->
             val nama = backStackEntry.arguments?.getString("nama")
-
-            val latihan = LatihanData.daftarLatihan.find {
-                it.nama == nama
-            }
+            val latihan = gistData?.latihan?.find { it.nama == nama }
+                ?: gistData?.kategori?.find { it.nama == nama }
+                ?: LatihanData.daftarLatihan.find { it.nama == nama }
 
             if (latihan != null) {
                 DetailScreen(latihan)
             }
+        }
+    }
+}
+
+suspend fun getLatihanFromApi(): GistResponse? {
+    return withContext(Dispatchers.IO) {
+        try {
+            val json = URL("https://gist.githubusercontent.com/MFarisAdithya/7b31a156bd9a42fa3a431b3f45cd6db4/raw/").readText()
+            Gson().fromJson(json, GistResponse::class.java)
+        } catch (_: Exception) {
+            null
         }
     }
 }
