@@ -62,10 +62,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import model.Fitness
-import model.GistResponse
-import model.LatihanData
-import java.net.URL
+import com.example.praktam2_2417051046.data.model.Fitness
+import com.example.praktam2_2417051046.data.model.GistResponse
+import com.example.praktam2_2417051046.data.model.LatihanData
+import com.example.praktam2_2417051046.data.repository.FitnessRepository
 
 class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -303,11 +303,12 @@ fun AppNavigation(navController: NavHostController) {
     var isLoading by remember { mutableStateOf(true) }
     var isError by remember { mutableStateOf(false) }
     var retryCount by remember { mutableIntStateOf(0) }
+    val repository = remember { FitnessRepository() }
 
     LaunchedEffect(retryCount) {
         isLoading = true
         isError = false
-        val response = getLatihanFromApi()
+        val response = repository.getLatihan()
         if (response != null) {
             gistData = response
             isError = false
@@ -340,13 +341,9 @@ fun AppNavigation(navController: NavHostController) {
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Gagal Memuat Data",
-                        style = MaterialTheme.typography.titleLarge,
+                        text = "Gagal memuat data, periksa koneksi internet",
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Pastikan koneksi internet Anda menyala"
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = { retryCount++ }) {
@@ -375,16 +372,7 @@ fun AppNavigation(navController: NavHostController) {
     }
 }
 
-suspend fun getLatihanFromApi(): GistResponse? {
-    return withContext(Dispatchers.IO) {
-        try {
-            val json = URL("https://gist.githubusercontent.com/MFarisAdithya/7b31a156bd9a42fa3a431b3f45cd6db4/raw/").readText()
-            Gson().fromJson(json, GistResponse::class.java)
-        } catch (_: Exception) {
-            null
-        }
-    }
-}
+
 
 @Preview(showBackground = true)
 @Composable
