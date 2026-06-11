@@ -5,6 +5,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Home
@@ -40,7 +43,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -64,12 +70,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -91,6 +100,7 @@ import com.example.praktam2_2417051046.data.model.Fitness
 import com.example.praktam2_2417051046.data.model.GistResponse
 import com.example.praktam2_2417051046.data.model.LatihanData
 import com.example.praktam2_2417051046.data.repository.FitnessRepository
+import com.example.praktam2_2417051046.data.repository.UserProfile
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -105,6 +115,41 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+// ==================== SPLASH SCREEN ====================
+
+@Composable
+fun SplashScreen(navController: NavController) {
+    var startAnimation by remember { mutableStateOf(false) }
+    val alphaAnim by animateFloatAsState(
+        targetValue = if (startAnimation) 1f else 0f,
+        animationSpec = tween(durationMillis = 1500),
+        label = "splash_alpha"
+    )
+
+    LaunchedEffect(Unit) {
+        startAnimation = true
+        delay(2500)
+        navController.navigate("home") {
+            popUpTo("splash") { inclusive = true }
+        }
+    }
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        // Load image from external URL using Coil's AsyncImage without any text or overlay covering it
+        AsyncImage(
+            model = "https://i.imgur.com/hpuzVVm.jpeg",
+            contentDescription = "Splash Screen Image",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize().alpha(alphaAnim)
+        )
+    }
+}
+
+// ==================== ENUMS & NAVIGATION ====================
 
 enum class WorkoutTab {
     HOME, FAVORITE, PROFILE
@@ -210,11 +255,13 @@ fun MainScreen(
                     viewModel = viewModel,
                     listLatihan = listLatihan
                 )
-                WorkoutTab.PROFILE -> ProfileTab()
+                WorkoutTab.PROFILE -> ProfileTab(viewModel = viewModel)
             }
         }
     }
 }
+
+// ==================== CATEGORY MATCHING ====================
 
 // Helper extension to match categories based on descriptions/names
 fun Fitness.matchesCategory(category: String): Boolean {
@@ -230,6 +277,8 @@ fun Fitness.matchesCategory(category: String): Boolean {
     }
 }
 
+// ==================== HOME TAB ====================
+
 @Composable
 fun HomeTab(
     navController: NavController,
@@ -237,14 +286,13 @@ fun HomeTab(
     kategori: List<Fitness>,
     listLatihan: List<Fitness>
 ) {
-    // Filter workouts if a category is selected
-    val filteredLatihan = remember(viewModel.selectedCategory, listLatihan) {
+    // Filter by category and search query
+    val filteredLatihan = remember(viewModel.selectedCategory, viewModel.searchQuery, listLatihan) {
         val category = viewModel.selectedCategory
-        if (category == null) {
-            listLatihan
-        } else {
-            listLatihan.filter { it.matchesCategory(category) }
-        }
+        val query = viewModel.searchQuery.lowercase().trim()
+        listLatihan
+            .filter { if (category == null) true else it.matchesCategory(category) }
+            .filter { if (query.isEmpty()) true else it.nama.lowercase().contains(query) }
     }
 
     LazyColumn(
@@ -253,6 +301,24 @@ fun HomeTab(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Search Bar
+        item {
+            OutlinedTextField(
+                value = viewModel.searchQuery,
+                onValueChange = { viewModel.updateSearchQuery(it) },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Cari latihan...") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Search,
+                        contentDescription = "Cari"
+                    )
+                },
+                shape = RoundedCornerShape(16.dp),
+                singleLine = true
+            )
+        }
+
         item {
             Text(
                 text = "Kategori Latihan",
@@ -353,6 +419,8 @@ fun HomeTab(
     }
 }
 
+// ==================== FAVORITE TAB ====================
+
 @Composable
 fun FavoriteTab(
     navController: NavController,
@@ -409,13 +477,31 @@ fun FavoriteTab(
     }
 }
 
+// ==================== PROFILE TAB (HEALTH PROFILE + BMI) ====================
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileTab() {
-    var weightInput by remember { mutableStateOf("") }
-    var heightInput by remember { mutableStateOf("") }
+fun ProfileTab(viewModel: HomeWorkoutViewModel) {
+    val profile = viewModel.userProfile
+
+    var namaInput by remember(profile.nama) { mutableStateOf(profile.nama) }
+    var umurInput by remember(profile.umur) { mutableStateOf(if (profile.umur > 0) profile.umur.toString() else "") }
+    var jenisKelaminInput by remember(profile.jenisKelamin) { mutableStateOf(profile.jenisKelamin) }
+    var beratInput by remember(profile.beratBadan) { mutableStateOf(if (profile.beratBadan > 0f) profile.beratBadan.toString() else "") }
+    var tinggiInput by remember(profile.tinggiBadan) { mutableStateOf(if (profile.tinggiBadan > 0f) profile.tinggiBadan.toString() else "") }
+
     var bmiResult by remember { mutableStateOf<Double?>(null) }
     var bmiStatus by remember { mutableStateOf("") }
     var bmiColor by remember { mutableStateOf(Color.Gray) }
+
+    var beratError by remember { mutableStateOf<String?>(null) }
+    var tinggiError by remember { mutableStateOf<String?>(null) }
+
+    var genderExpanded by remember { mutableStateOf(false) }
+    val genderOptions = listOf("Laki-laki", "Perempuan")
+
+    var profileSaved by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     LazyColumn(
         modifier = Modifier
@@ -423,6 +509,7 @@ fun ProfileTab() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Profile Card
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -430,50 +517,126 @@ fun ProfileTab() {
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .padding(16.dp)
                         .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(72.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
+                    Text(
+                        text = "Data Kesehatan",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    OutlinedTextField(
+                        value = namaInput,
+                        onValueChange = { namaInput = it },
+                        label = { Text("Nama") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = umurInput,
+                        onValueChange = { umurInput = it },
+                        label = { Text("Umur") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    ExposedDropdownMenuBox(
+                        expanded = genderExpanded,
+                        onExpandedChange = { genderExpanded = !genderExpanded }
                     ) {
-                        Text(
-                            text = "M",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                        OutlinedTextField(
+                            value = jenisKelaminInput,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Jenis Kelamin") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth()
                         )
+                        ExposedDropdownMenu(
+                            expanded = genderExpanded,
+                            onDismissRequest = { genderExpanded = false }
+                        ) {
+                            genderOptions.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option) },
+                                    onClick = {
+                                        jenisKelaminInput = option
+                                        genderExpanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
 
-                    Spacer(modifier = Modifier.width(16.dp))
+                    OutlinedTextField(
+                        value = beratInput,
+                        onValueChange = {
+                            beratInput = it
+                            beratError = null
+                        },
+                        label = { Text("Berat Badan (kg)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = beratError != null,
+                        supportingText = beratError?.let { { Text(it, color = Color.Red) } },
+                        singleLine = true
+                    )
 
-                    Column {
+                    OutlinedTextField(
+                        value = tinggiInput,
+                        onValueChange = {
+                            tinggiInput = it
+                            tinggiError = null
+                        },
+                        label = { Text("Tinggi Badan (cm)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = tinggiError != null,
+                        supportingText = tinggiError?.let { { Text(it, color = Color.Red) } },
+                        singleLine = true
+                    )
+
+                    Button(
+                        onClick = {
+                            profileSaved = false
+                            val profileToSave = UserProfile(
+                                nama = namaInput.trim(),
+                                umur = umurInput.toIntOrNull() ?: 0,
+                                jenisKelamin = jenisKelaminInput,
+                                beratBadan = beratInput.toFloatOrNull() ?: 0f,
+                                tinggiBadan = tinggiInput.toFloatOrNull() ?: 0f
+                            )
+                            viewModel.saveUserProfile(profileToSave)
+                            profileSaved = true
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Text("Simpan Profil", color = Color.White)
+                    }
+
+                    if (profileSaved) {
                         Text(
-                            text = "Mahasiswa Praktikum",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "NPM: 2417051046",
+                            text = "✅ Profil berhasil disimpan!",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
-                        )
-                        Text(
-                            text = "Kelas: Praktikum TAM",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
             }
         }
 
+        // BMI Calculator Card
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -494,46 +657,47 @@ fun ProfileTab() {
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    OutlinedTextField(
-                        value = weightInput,
-                        onValueChange = { weightInput = it },
-                        label = { Text("Berat Badan (kg)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    OutlinedTextField(
-                        value = heightInput,
-                        onValueChange = { heightInput = it },
-                        label = { Text("Tinggi Badan (cm)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
+                    Text(
+                        text = "Menggunakan data berat & tinggi dari profil di atas.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
                     )
 
                     Button(
                         onClick = {
-                            val w = weightInput.toDoubleOrNull()
-                            val hCm = heightInput.toDoubleOrNull()
-                            if (w != null && hCm != null && hCm > 0) {
+                            var hasError = false
+                            val w = beratInput.toDoubleOrNull()
+                            val hCm = tinggiInput.toDoubleOrNull()
+
+                            if (w == null || w <= 0) {
+                                beratError = "Masukkan berat badan yang valid (> 0)"
+                                hasError = true
+                            }
+                            if (hCm == null || hCm <= 0) {
+                                tinggiError = "Masukkan tinggi badan yang valid (> 0)"
+                                hasError = true
+                            }
+
+                            if (!hasError && w != null && hCm != null) {
                                 val hM = hCm / 100.0
                                 val bmi = w / (hM * hM)
                                 bmiResult = bmi
                                 when {
                                     bmi < 18.5 -> {
                                         bmiStatus = "Kurus (Underweight)"
-                                        bmiColor = Color(0xFFFFB300) // Orange/Yellow
+                                        bmiColor = Color(0xFFFFB300)
                                     }
                                     bmi < 25.0 -> {
                                         bmiStatus = "Normal (Healthy)"
-                                        bmiColor = Color(0xFF2E7D32) // Green
+                                        bmiColor = Color(0xFF2E7D32)
                                     }
                                     bmi < 30.0 -> {
                                         bmiStatus = "Kelebihan Berat Badan (Overweight)"
-                                        bmiColor = Color(0xFFF57C00) // Orange
+                                        bmiColor = Color(0xFFF57C00)
                                     }
                                     else -> {
                                         bmiStatus = "Obesitas (Obese)"
-                                        bmiColor = Color(0xFFD32F2F) // Red
+                                        bmiColor = Color(0xFFD32F2F)
                                     }
                                 }
                             }
@@ -575,6 +739,8 @@ fun ProfileTab() {
         }
     }
 }
+
+// ==================== WORKOUT CARD ====================
 
 @Composable
 fun FitnessWorkoutCard(
@@ -659,6 +825,8 @@ fun FitnessWorkoutCard(
         }
     }
 }
+
+// ==================== DETAIL SCREEN ====================
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -797,6 +965,8 @@ fun SingleExerciseScreen(latihan: Fitness, navController: NavController) {
     }
 }
 
+// ==================== ROUTINE RUNNER ====================
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutineRunnerScreen(routine: Fitness, exercises: List<Fitness>, navController: NavController) {
@@ -926,7 +1096,7 @@ fun RoutineRunnerScreen(routine: Fitness, exercises: List<Fitness>, navControlle
             } else if (isCompleted) {
                 Text("Latihan Selesai! 🎉", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Luar biasa! Rutinitas ${routine.nama} telah terselesaikan.", textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Text("Luar biasa! Rutinitas ${routine.nama} telah terselesaikan.", textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.height(32.dp))
                 Button(onClick = { navController.popBackStack() }, modifier = Modifier.fillMaxWidth()) {
                     Text("Selesai")
@@ -1068,56 +1238,55 @@ fun RoutineRunnerScreen(routine: Fitness, exercises: List<Fitness>, navControlle
     }
 }
 
+// ==================== APP NAVIGATION ====================
+
 @Composable
 fun AppNavigation(navController: NavHostController) {
-    var gistData by remember { mutableStateOf<GistResponse?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var isError by remember { mutableStateOf(false) }
-    var retryCount by remember { mutableIntStateOf(0) }
-    val repository = remember { FitnessRepository() }
     val workoutViewModel: HomeWorkoutViewModel = viewModel()
 
-    val routines = remember(gistData) {
-        gistData?.kategori?.flatMap { kat ->
+    val routines = remember(workoutViewModel.gistData) {
+        val gist = workoutViewModel.gistData
+        gist?.kategori?.flatMap { kat ->
             listOf("Pemula", "Menengah", "Lanjutan").map { level ->
                 val durasi = when(level) {
                     "Pemula" -> "10 Menit"
                     "Menengah" -> "15 Menit"
                     else -> "20 Menit"
                 }
+                
+                // Cari apakah ada gambar spesifik untuk tingkat kesulitan ini di daftar latihan
+                val matchingExerciseImage = gist.latihan.find { ex ->
+                    val isSameCategory = ex.nama.lowercase().contains(kat.nama.lowercase()) ||
+                                         ex.deskripsi.lowercase().contains(kat.nama.lowercase())
+                    val isSameLevel = ex.nama.lowercase().contains(level.lowercase()) ||
+                                      ex.deskripsi.lowercase().contains(level.lowercase())
+                    isSameCategory && isSameLevel
+                }?.image_url ?: kat.image_url
+
                 Fitness(
                     nama = "${kat.nama} $level",
                     deskripsi = "Program latihan ${kat.nama.lowercase()} khusus untuk tingkat $level.",
                     durasi = durasi,
-                    image_url = kat.image_url
+                    image_url = matchingExerciseImage
                 )
             }
         } ?: emptyList()
     }
 
-    LaunchedEffect(retryCount) {
-        isLoading = true
-        isError = false
-        val response = repository.getLatihan()
-        if (response != null) {
-            gistData = response
-            isError = false
-        } else {
-            isError = true
-        }
-        isLoading = false
-    }
-
     NavHost(
         navController = navController,
-        startDestination = "home"
+        startDestination = "splash"
     ) {
+        composable("splash") {
+            SplashScreen(navController)
+        }
+
         composable("home") {
-            if (isLoading) {
+            if (workoutViewModel.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            } else if (isError) {
+            } else if (workoutViewModel.isError) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
@@ -1136,7 +1305,7 @@ fun AppNavigation(navController: NavHostController) {
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { retryCount++ }) {
+                    Button(onClick = { workoutViewModel.fetchData() }) {
                         Text("Coba Lagi", color = Color.White)
                     }
                 }
@@ -1144,7 +1313,7 @@ fun AppNavigation(navController: NavHostController) {
                 MainScreen(
                     navController = navController,
                     viewModel = workoutViewModel,
-                    kategori = gistData?.kategori ?: emptyList(),
+                    kategori = workoutViewModel.gistData?.kategori ?: emptyList(),
                     listLatihan = routines
                 )
             }
@@ -1156,11 +1325,11 @@ fun AppNavigation(navController: NavHostController) {
 
             if (routine != null) {
                 val categoryName = routine.nama.replace(" Pemula", "").replace(" Menengah", "").replace(" Lanjutan", "").trim()
-                val exercises = gistData?.latihan?.filter { it.matchesCategory(categoryName) } ?: emptyList()
+                val exercises = workoutViewModel.gistData?.latihan?.filter { it.matchesCategory(categoryName) } ?: emptyList()
                 DetailScreen(routine, exercises, navController)
             } else {
-                val latihan = gistData?.latihan?.find { it.nama == nama }
-                    ?: gistData?.kategori?.find { it.nama == nama }
+                val latihan = workoutViewModel.gistData?.latihan?.find { it.nama == nama }
+                    ?: workoutViewModel.gistData?.kategori?.find { it.nama == nama }
                     ?: LatihanData.daftarLatihan.find { it.nama == nama }
 
                 if (latihan != null) {
